@@ -1,0 +1,26 @@
+name = "backend"
+main = "src/app.ts"
+compatibility_date = "2025-01-01"
+
+[vars]
+CF_API_TOKEN = "D_QHjtKtrXz_W0vvr7wTJkcTnA-vZFhbS5P6cNYT"
+
+[[kv_namespaces]]
+binding = "KV"
+id = "9310dfa0d0984a70a9ec8e9075d89279"
+
+# [[r2_buckets]]
+# binding = "MY_BUCKET"
+# bucket_name = "my-bucket"
+
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "my-database"
+# database_id = ""
+
+# [ai]
+# binding = "AI"
+
+# [observability]
+# enabled = true
+# head_sampling_rate = 1
