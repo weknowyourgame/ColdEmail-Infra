@@ -74,7 +74,7 @@ export class CloudflareService {
         throw error;
       }
     }
-  
+
     async setupDomainAndEmail(config: DomainSetup) {
       try {
         // Create zone
