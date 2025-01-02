@@ -4,6 +4,7 @@ compatibility_date = "2025-01-01"
 
 [vars]
 CF_API_TOKEN = "D_QHjtKtrXz_W0vvr7wTJkcTnA-vZFhbS5P6cNYT"
+JWT_SECRET = "secret"
 
 [[kv_namespaces]]
 binding = "KV"
