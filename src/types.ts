@@ -1,6 +1,7 @@
 export interface Env {
   CF_API_TOKEN: string;
   KV: KVNamespace;
+  JWT_SECRET: string;
 }
 
 export interface DomainSetup {
