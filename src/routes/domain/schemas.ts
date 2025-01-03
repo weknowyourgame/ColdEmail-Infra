@@ -12,6 +12,7 @@ export const setupDomainSchema = z.object({
     .regex(/^(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.[A-Za-z]{2,})+$/)
     .min(4)
     .max(253),
+  zoneId: z.string(),
   redirectTo: z.string().url().max(253),
   email: z.object({
     reportAddress: z.string().email(),

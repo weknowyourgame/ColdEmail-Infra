@@ -29,27 +29,39 @@ domainRouter.post("/setup",
   zValidator("json", setupDomainSchema),
   async (c) => {
     try {
-      const body = await c.req.json();
+      const { domain, zoneId, redirectTo, email, security } = await c.req.json();
       const cf = new CloudflareService(c.env.CF_API_TOKEN);
       
       // Audit log entry
       const requestId = c.req.header("cf-ray") || crypto.randomUUID();
       await c.env.KV.put(`setup:${requestId}`, JSON.stringify({
         timestamp: Date.now(),
-        domain: body.domain,
+        domain,
+        zoneId,
         requestedBy: c.get("userId"),
       }));
 
-      const setup = await cf.setupDomainAndEmail(body);
+      const setup = await cf.setupDomainAndEmail({
+        domain,
+        zoneId,
+        redirectTo,
+        reportEmail: email.reportAddress,
+        ...email,
+        ...security
+      });
       
       // Log successful setup
-      await c.env.KV.put(`domain:${body.domain}:setup`, JSON.stringify({
+      await c.env.KV.put(`domain:${domain}:setup`, JSON.stringify({
         ...setup,
         requestId,
         completedAt: Date.now()
       }));
 
-      return c.json(setup);
+      return c.json({
+        success: true,
+        setup,
+        requestId
+      });
     } catch (error) {
       console.error("Setup error:", error);
       throw error;
