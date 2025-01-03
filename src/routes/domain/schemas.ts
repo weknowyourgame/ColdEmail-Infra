@@ -26,3 +26,10 @@ export const setupDomainSchema = z.object({
     enableCAA: z.boolean(),
   })
 });
+
+export const createDomainSchema = z.object({
+  domain: z.string()
+    .regex(/^(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.[A-Za-z]{2,})+$/)
+    .min(4)
+    .max(253),
+});

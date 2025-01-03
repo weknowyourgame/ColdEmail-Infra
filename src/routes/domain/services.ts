@@ -189,6 +189,23 @@ export class CloudflareService {
         throw error;
       }
     }
+
+    async createDomain(domainName: string) {
+      try {
+        const response = await this.cfRequest('POST', '/zones', {
+          name: domainName,
+          jump_start: true
+        });
+
+        return {
+          nameServers: response.result.name_servers || [],
+          zoneId: response.result.id,
+        };
+      } catch (error) {
+        console.error("Create Domain Error:", error);
+        throw error;
+      }
+    }
   }
   
 export type DomainRouter = typeof domainRouter;
