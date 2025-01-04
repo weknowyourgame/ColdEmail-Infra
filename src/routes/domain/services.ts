@@ -35,11 +35,50 @@ interface CloudflareRecordResponse {
   };
 }
 
+interface PageRule {
+  targets: Array<{
+    target: string;
+    constraint: {
+      operator: string;
+      value: string;
+    };
+  }>;
+  actions: Array<{
+    id: string;
+    value: {
+      url: string;
+      status_code: number;
+    };
+  }>;
+  status: string;
+}
+
+interface PageRuleResponse extends CloudflareResponse {
+  result: {
+    id: string;
+    targets: Array<{
+      target: string;
+      constraint: {
+        operator: string;
+        value: string;
+      };
+    }>;
+    actions: Array<{
+      id: string;
+      value: {
+        url: string;
+        status_code: number;
+      };
+    }>;
+    status: string;
+  };
+}
+
 export class CloudflareService {
     private baseUrl = 'https://api.cloudflare.com/client/v4';
     
     constructor(private apiToken: string) {}
-    private async cfRequest<T>(
+    protected async cfRequest<T>(
       method: string,
       endpoint: string,
       data?: unknown
@@ -60,6 +99,14 @@ export class CloudflareService {
       }
   
       return result as T;
+    }
+  
+    public async makeRequest<T>(
+      method: string,
+      endpoint: string,
+      data?: unknown
+    ): Promise<T> {
+      return this.cfRequest<T>(method, endpoint, data);
     }
   
     async verifyDomain(domain: string) {
@@ -160,24 +207,38 @@ export class CloudflareService {
     // Method to verify domain setup
     async verifyDomainSetup(domain: string) {
       try {
-        // Check zone exists
-        const zone = await this.cfRequest<CloudflareResponse>("GET", `/zones?name=${domain}`);
+        // Get zone info
+        const zoneResponse = await this.cfRequest<CloudflareResponse>("GET", `/zones?name=${domain}`);
         
-        if (!zone.result?.length) {
-          throw new Error('Domain not found in Cloudflare');
+        if (!zoneResponse.result?.length) {
+          return {
+            success: false,
+            domain,
+            error: "Domain not found in Cloudflare"
+          };
         }
-  
+
+        const zoneId = zoneResponse.result[0].id;
+
         // Get DNS records
-        const records = await this.cfRequest<CloudflareResponse>(`/zones/${zone.result[0].id}/dns_records`);
+        const recordsResponse = await this.cfRequest<CloudflareResponse>(`/zones/${zoneId}/dns_records`);
         
-        // Verify required records exist
-        const hasSpf = records.result.some((r: CloudflareRecord) => r.type === 'TXT' && r.content.includes('v=spf1'));
-        const hasDmarc = records.result.some((r: CloudflareRecord) => r.type === 'TXT' && r.name.includes('_dmarc'));
-        const hasDkim = records.result.some((r: CloudflareRecord) => r.type === 'CNAME' && r.name.includes('_domainkey'));
-        
+        // Verify required records
+        const hasSpf = recordsResponse.result.some((r: CloudflareRecord) => 
+          r.type === 'TXT' && r.content.includes('v=spf1')
+        );
+        const hasDmarc = recordsResponse.result.some((r: CloudflareRecord) => 
+          r.type === 'TXT' && r.name.includes('_dmarc')
+        );
+        const hasDkim = recordsResponse.result.some((r: CloudflareRecord) => 
+          r.type === 'CNAME' && r.name.includes('_domainkey')
+        );
+
         return {
           success: true,
           domain,
+          zoneId,
+          nameservers: zoneResponse.result[0].name_servers,
           records: {
             spf: hasSpf,
             dmarc: hasDmarc,
@@ -185,8 +246,8 @@ export class CloudflareService {
           }
         };
       } catch (error) {
-        console.error('Verification error:', error);
-        throw error;
+        console.error('Domain verification error:', error);
+        throw new Error(`Failed to verify domain: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
 
@@ -204,6 +265,101 @@ export class CloudflareService {
       } catch (error) {
         console.error("Create Domain Error:", error);
         throw error;
+      }
+    }
+
+    async updateRedirect(zoneId: string, domain: string, redirectUrl: string) {
+      try {
+        const pageRuleConfig = {
+          targets: [
+            {
+              target: "url",
+              constraint: {
+                operator: "matches",
+                value: `*${domain}/*` // Make sure pattern matches Cloudflare format
+              }
+            }
+          ],
+          actions: [
+            {
+              id: "forwarding_url",
+              value: {
+                url: redirectUrl,
+                status_code: 301
+              }
+            }
+          ],
+          status: "active",
+          priority: 1
+        };
+
+        // First try to find existing rules
+        const existingRules = await this.cfRequest<CloudflareResponse>(
+          "GET",
+          `/zones/${zoneId}/pagerules`
+        );
+
+        const existingRule = existingRules.result?.find((rule: any) => 
+          rule.targets?.[0]?.constraint?.value?.includes(domain)
+        );
+
+        if (existingRule) {
+          // Update existing rule
+          return await this.cfRequest<CloudflareResponse>(
+            "PUT",
+            `/zones/${zoneId}/pagerules/${existingRule.id}`,
+            pageRuleConfig
+          );
+        }
+
+        // Create new rule
+        return await this.cfRequest<CloudflareResponse>(
+          "POST",
+          `/zones/${zoneId}/pagerules`,
+          pageRuleConfig
+        );
+      } catch (error) {
+        console.error('Update redirect error:', error);
+        throw new Error(`Failed to update redirect: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+
+    async getRedirects(zoneId: string) {
+      try {
+        const response = await this.cfRequest<CloudflareResponse>(
+          "GET",
+          `/zones/${zoneId}/pagerules`
+        );
+
+        return {
+          success: true,
+          redirects: response.result.map((rule: any) => ({
+            id: rule.id,
+            target: rule.targets[0]?.constraint?.value,
+            redirectTo: rule.actions[0]?.value?.url,
+            status: rule.status
+          }))
+        };
+      } catch (error) {
+        console.error('Get redirects error:', error);
+        throw new Error(`Failed to get redirects: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+
+    async deleteRedirect(zoneId: string, ruleId: string) {
+      try {
+        await this.cfRequest<CloudflareResponse>(
+          "DELETE",
+          `/zones/${zoneId}/pagerules/${ruleId}`
+        );
+        
+        return {
+          success: true,
+          message: "Redirect rule deleted successfully"
+        };
+      } catch (error) {
+        console.error('Delete redirect error:', error);
+        throw new Error(`Failed to delete redirect: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
   }
