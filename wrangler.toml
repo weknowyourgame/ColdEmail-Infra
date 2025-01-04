@@ -10,9 +10,9 @@ JWT_SECRET = "secret"
 binding = "KV"
 id = "9310dfa0d0984a70a9ec8e9075d89279"
 
-# [[r2_buckets]]
-# binding = "MY_BUCKET"
-# bucket_name = "my-bucket"
+[[r2_buckets]]
+binding = "STORAGE"
+bucket_name = "warpify"
 
 # [[d1_databases]]
 # binding = "DB"

@@ -7,6 +7,8 @@ import { authMiddleware } from './middleware/auth';
 import { CloudflareService } from './routes/domain/services';
 import { domainRouter } from './routes/domain';
 import { Env } from './types';
+import { storageRouter } from './routes/storage';
+import { healthRouter } from './routes/health';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -20,6 +22,8 @@ app.use('*', prettyJSON());
 app.use('*', secureHeaders());
 
 app.route('/api/domain', domainRouter);
+app.route('/api/storage', storageRouter);
+app.route('/api/health', healthRouter);
 
 app.use('*', async (c, next) => {
   try {
