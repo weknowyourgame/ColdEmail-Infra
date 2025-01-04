@@ -191,6 +191,8 @@ export class CloudflareService {
         return {
           success: true,
           zoneId: zone.result.id,
+          domain: config.domain,
+          redirectTo: config.redirectTo,
           nameservers: zone.result.name_servers,
           records: dnsResults.map(r => ({
             type: r.result.type,
