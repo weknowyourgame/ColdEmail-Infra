@@ -2,9 +2,14 @@ name = "warpifydomainworker"
 main = "src/app.ts"
 compatibility_date = "2025-01-01"
 
+browser = { binding = "BROWSER" }
+
+compatibility_flags = [ "nodejs_compat" ]
+
 [vars]
 CF_API_TOKEN = "D_QHjtKtrXz_W0vvr7wTJkcTnA-vZFhbS5P6cNYT"
 JWT_SECRET = "secret"
+SMARTLEAD_API_BASE = "https://server.smartlead.ai/api/v1"
 
 [[kv_namespaces]]
 binding = "KV"

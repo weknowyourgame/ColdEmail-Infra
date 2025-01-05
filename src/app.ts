@@ -9,6 +9,8 @@ import { domainRouter } from './routes/domain';
 import { Env } from './types';
 import { storageRouter } from './routes/storage';
 import { healthRouter } from './routes/health';
+import { automationRouter } from './routes/automation';
+import { warmupRouter } from './routes/warmup';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -24,6 +26,8 @@ app.use('*', secureHeaders());
 app.route('/api/domain', domainRouter);
 app.route('/api/storage', storageRouter);
 app.route('/api/health', healthRouter);
+app.route('/api/automation', automationRouter);
+app.route('/api/warmup', warmupRouter);
 
 app.use('*', async (c, next) => {
   try {
